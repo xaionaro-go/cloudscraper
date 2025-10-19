@@ -37,7 +37,7 @@ func readJsonFile() (browserDescription, error) {
 }
 
 func getUserAgents(mobile bool) (BrowserConf, error) {
-	rand.Seed(time.Now().UnixNano())
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	var userAgents map[string]map[string][]string
 	browsersDescription, err := readJsonFile()
 	if err != nil {
@@ -52,17 +52,21 @@ func getUserAgents(mobile bool) (BrowserConf, error) {
 	for k := range userAgents {
 		osList = append(osList, k)
 	}
-	rnd := rand.Intn(len(osList))
+	rnd := rng.Intn(len(osList))
 	pickedOs := userAgents[osList[rnd]]
 	var browserList []string
 	for k := range pickedOs {
 		browserList = append(browserList, k)
 	}
-	rnd = rand.Intn(len(browserList))
+	rnd = rng.Intn(len(browserList))
 	browserName := browserList[rnd]
 	pickedBrowser := pickedOs[browserName]
-	rnd = rand.Intn(len(pickedBrowser))
+	rnd = rng.Intn(len(pickedBrowser))
 	pickedUserAgent := pickedBrowser[rnd]
 	ja3 := browsersDescription.Ja3[browserName]
-	return BrowserConf{UserAgent: pickedUserAgent, Ja3: ja3, Headers: browsersDescription.Headers[browserName]}, nil
+	return BrowserConf{
+		UserAgent: pickedUserAgent,
+		Ja3:       ja3,
+		Headers:   browsersDescription.Headers[browserName],
+	}, nil
 }

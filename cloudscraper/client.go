@@ -1,28 +1,34 @@
 package cloudscraper
 
 import (
-	"github.com/RomainMichau/CycleTLS/cycletls"
+	"context"
+	"maps"
+
+	"github.com/Danny-Dasilva/CycleTLS/cycletls"
 )
 
 type CloudScrapper struct {
 	client        cycletls.CycleTLS
-	respChan      chan cycletls.Response
+	respChan      chan []byte
 	defaultHeader map[string]string
 	ja3           string
 	userAgent     string
 }
 
-func (cs CloudScrapper) Do(url string, options cycletls.Options, method string) (cycletls.Response, error) {
-	for k, v := range cs.defaultHeader {
-		options.Headers[k] = v
-	}
+func (cs CloudScrapper) Do(
+	ctx context.Context,
+	url string,
+	options cycletls.Options,
+	method string,
+) (cycletls.Response, error) {
+	maps.Copy(options.Headers, cs.defaultHeader)
 	if options.UserAgent == "" {
 		options.UserAgent = cs.userAgent
 	}
 	if options.Ja3 == "" {
 		options.Ja3 = cs.ja3
 	}
-	return cs.client.Do(url, options, method)
+	return cs.client.Do(ctx, url, options, method)
 }
 
 // Queue Push a request in the Queue
@@ -41,25 +47,35 @@ func (cs CloudScrapper) Queue(url string, options cycletls.Options, method strin
 	cs.client.Queue(url, options, method)
 }
 
-func (cs CloudScrapper) Get(url string, headers map[string]string, body string) (cycletls.Response, error) {
+func (cs CloudScrapper) Get(
+	ctx context.Context,
+	url string,
+	headers map[string]string,
+	body string,
+) (cycletls.Response, error) {
 	options := cycletls.Options{
 		Ja3:       cs.ja3,
 		Body:      body,
 		UserAgent: cs.userAgent,
 		Headers:   headers}
-	return cs.Do(url, options, "GET")
+	return cs.Do(ctx, url, options, "GET")
 }
 
-func (cs CloudScrapper) Post(url string, headers map[string]string, body string) (cycletls.Response, error) {
+func (cs CloudScrapper) Post(
+	ctx context.Context,
+	url string,
+	headers map[string]string,
+	body string,
+) (cycletls.Response, error) {
 	options := cycletls.Options{
 		Ja3:       cs.ja3,
 		Body:      body,
 		UserAgent: cs.userAgent,
 		Headers:   headers}
-	return cs.Do(url, options, "POST")
+	return cs.Do(ctx, url, options, "POST")
 }
 
-func (cs CloudScrapper) RespChan() chan cycletls.Response {
+func (cs CloudScrapper) RespChan() chan []byte {
 	return cs.respChan
 }
 
@@ -69,7 +85,12 @@ func Init(mobile bool, workers bool) (*CloudScrapper, error) {
 		return nil, err
 	}
 	cycleTstClient := cycletls.Init(workers)
-	p := CloudScrapper{client: cycleTstClient, defaultHeader: browserConf.Headers, ja3: browserConf.Ja3, userAgent: browserConf.UserAgent,
-		respChan: cycleTstClient.RespChan}
+	p := CloudScrapper{
+		client:        cycleTstClient,
+		defaultHeader: browserConf.Headers,
+		ja3:           browserConf.Ja3,
+		userAgent:     browserConf.UserAgent,
+		respChan:      cycleTstClient.RespChan,
+	}
 	return &p, nil
 }
